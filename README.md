@@ -16,7 +16,11 @@ Welcome to our 2D Zombie Shooter game project, a thrilling game set in a Montrea
 
 ## Installation and Setup
 1. Clone the repository: `git clone https://github.com/Pepen0/CONUHACK_Peno_Ammar_2024.git`
-2. Install dependencies: `To be done Later`
+2. Install dependencies: 
+    - Homebrew/g++ on windows - `to be added`
+    - Xcode on mac
+    - SDL
+
 3. Run the game: `To be done later`
 
 ## Contributing

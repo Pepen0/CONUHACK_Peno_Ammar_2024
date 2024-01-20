@@ -1,0 +1,6 @@
+.vs/
+*.opendb
+*.suo
+*.user
+*userprefs
+*.vscode
