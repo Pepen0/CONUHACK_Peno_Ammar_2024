@@ -34,6 +34,7 @@ struct Square
     SDL_Texture *image;
     SquareState state;
     int step;
+    int health;
 };
 
 struct Bullet
@@ -61,6 +62,12 @@ struct App
     Graphics::Screen screen;
     Square square;
     SDL_Texture *zombieTexture;
+    SDL_Texture *backgroundTexture;
+    SDL_Texture *gameOverTexture;
+    SDL_Rect gameOverRect;
+    int currentWave;
+    int numZombiesInWave;
+    Uint32 waveStartTime;
 } app;
 
 // Function to load texture
@@ -124,6 +131,14 @@ void UpdateZombies()
                 zombie.y++;
             if (zombie.y > app.square.y)
                 zombie.y--;
+        }
+
+        for (const auto &zombie : zombies)
+        {
+            if (abs(zombie.x - app.square.x) < 30 && abs(zombie.y - app.square.y) < 30)
+            {                           // Example collision check
+                app.square.health -= 5; // Decrease health by 5
+            }
         }
     }
 }
@@ -207,6 +222,42 @@ void DrawMainChar(SDL_Renderer *renderer, Square &square)
     SDL_RenderCopy(renderer, square.image, NULL, &rect);
 }
 
+void DrawBackground(SDL_Renderer *renderer, SDL_Texture *backgroundTexture)
+{
+    SDL_Rect backgroundRect = {0, 0, app.screen.WIDTH, app.screen.HEIGHT};
+    SDL_RenderCopy(renderer, backgroundTexture, NULL, &backgroundRect);
+}
+
+void DrawHealthBar(SDL_Renderer *renderer, int health)
+{
+    SDL_Rect healthBarOutline = {10, 10, 200, 20};
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderDrawRect(renderer, &healthBarOutline);
+
+    SDL_Rect healthBar = {10, 10, 2 * health, 20};
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_RenderFillRect(renderer, &healthBar);
+}
+
+void SpawnZombies()
+{
+    for (int i = 0; i < app.numZombiesInWave; ++i)
+    {
+        Zombie newZombie;
+        // Ensure zombies spawn outside the visible screen area
+        newZombie.x = rand() % (app.screen.WIDTH + 200) - 100;
+        newZombie.y = rand() % (app.screen.HEIGHT + 200) - 100;
+        while (newZombie.x > 0 && newZombie.x < app.screen.WIDTH &&
+               newZombie.y > 0 && newZombie.y < app.screen.HEIGHT)
+        {
+            newZombie.x = rand() % (app.screen.WIDTH + 200) - 100;
+            newZombie.y = rand() % (app.screen.HEIGHT + 200) - 100;
+        }
+        newZombie.image = app.zombieTexture;
+        zombies.push_back(newZombie);
+    }
+}
+
 // Application routine
 void ShutdownApplication()
 {
@@ -220,6 +271,12 @@ void ShutdownApplication()
     {
         SDL_DestroyTexture(app.zombieTexture);
         app.zombieTexture = nullptr;
+    }
+
+    if (app.backgroundTexture != nullptr)
+    {
+        SDL_DestroyTexture(app.backgroundTexture);
+        app.backgroundTexture = nullptr;
     }
 
     if (app.window != nullptr)
@@ -269,10 +326,15 @@ bool InitApplication()
         return false;
     }
 
+    app.square.health = 500;
+
     // Load images
     app.square.image = LoadTexture("res/image/base.png", app.renderer);
     app.zombieTexture = LoadTexture("res/image/zombie.webp", app.renderer);
-    if (app.square.image == nullptr || app.zombieTexture == nullptr)
+    app.backgroundTexture = LoadTexture("res/image/level1.png", app.renderer);
+    app.gameOverTexture = LoadTexture("res/image/GameOver.png", app.renderer);
+
+    if (app.square.image == nullptr || app.zombieTexture == nullptr || app.backgroundTexture == nullptr || app.gameOverTexture == nullptr)
     {
         ShutdownApplication();
         return false;
@@ -284,15 +346,9 @@ bool InitApplication()
     app.square.state = IDLE;
     app.square.step = app.DefaultStep;
 
-    // Initialize zombies
-    for (int i = 0; i < 5; ++i)
-    {
-        Zombie newZombie;
-        newZombie.x = rand() % app.screen.WIDTH;
-        newZombie.y = rand() % app.screen.HEIGHT;
-        newZombie.image = app.zombieTexture;
-        zombies.push_back(newZombie);
-    }
+    app.currentWave = 1;
+    app.numZombiesInWave = 4; // Start with 2 zombies in the first wave
+    app.waveStartTime = SDL_GetTicks();
 
     return true;
 }
@@ -327,6 +383,8 @@ int main(int argc, char *argv[])
     {
         ClearScreen(app.renderer);
 
+        DrawBackground(app.renderer, app.backgroundTexture);
+
         // Character state
         switch (app.square.state)
         {
@@ -345,6 +403,21 @@ int main(int argc, char *argv[])
         default:
             break;
         }
+
+        if (app.square.health <= 0)
+        {
+            // Display game over screen
+            SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 255); // Black color for the game over screen
+            SDL_RenderClear(app.renderer);
+
+            SDL_Delay(3000); // Display the game over screen for 30 seconds
+
+            break;
+        }
+
+        // DrawBackgroung and health bar
+        DrawBackground(app.renderer, app.backgroundTexture);
+        DrawHealthBar(app.renderer, app.square.health);
 
         // Update and draw bullets
         UpdateBullets();
@@ -416,6 +489,15 @@ int main(int argc, char *argv[])
         }
 
         DrawMainChar(app.renderer, app.square);
+
+        if (zombies.empty() && SDL_GetTicks() > app.waveStartTime + 10000)
+        { // 10 seconds delay
+            app.currentWave++;
+            app.numZombiesInWave *= 2; // Double the number of zombies
+            SpawnZombies();
+            app.waveStartTime = SDL_GetTicks(); // Reset the wave start time
+        }
+
         SDL_RenderPresent(app.renderer);
     }
 
