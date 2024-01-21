@@ -4,5 +4,4 @@
 *.user
 *userprefs
 *.vscode
-*main.dSYM
-*main
+*build

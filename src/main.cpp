@@ -15,8 +15,8 @@ namespace Graphics
 {
     struct Screen
     {
-        const int WIDTH = 512;
-        const int HEIGHT = 284;
+        const int WIDTH = 1280;
+        const int HEIGHT = 720;
 
         const int center_X = WIDTH / 2;
         const int center_Y = HEIGHT / 2;
