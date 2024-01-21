@@ -1,14 +1,8 @@
 #include <iostream>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 using namespace std;
 #define SDL_MAIN_HANDLED
-
-// Colors
-namespace Colors
-{
-    const SDL_Color Black = {0, 0, 0, SDL_ALPHA_OPAQUE};
-    const SDL_Color Green = {0, 255, 0, SDL_ALPHA_OPAQUE};
-}
 
 // Graphics
 namespace Graphics
@@ -17,7 +11,6 @@ namespace Graphics
     {
         const int WIDTH = 1280;
         const int HEIGHT = 720;
-
         const int center_X = WIDTH / 2;
         const int center_Y = HEIGHT / 2;
     };
@@ -35,11 +28,9 @@ enum SquareState
 
 struct Square
 {
-    int HEIGHT;
-    int WIDTH;
     int x;
     int y;
-
+    SDL_Texture *image;
     SquareState state;
     int step;
 };
@@ -50,56 +41,68 @@ struct App
     const int DefaultStep = 2;
     SDL_Window *window;
     SDL_Renderer *renderer;
-
     Graphics::Screen screen;
-
-    Square square =
-        {
-            32,
-            32,
-            screen.center_X,
-            screen.center_Y,
-            IDLE,
-            DefaultStep};
-
+    Square square;
 } app;
 
 // SDL routine
-
 bool InitSDL()
 {
-    if (SDL_Init(SDL_INIT_EVERYTHING) > 0)
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         cout << "SDL_Init failed with error: " << SDL_GetError() << endl;
         return false;
     }
+
+    if (IMG_Init(IMG_INIT_PNG) < 0)
+    {
+        cout << "IMG_Init failed with error: " << IMG_GetError() << endl;
+        return false;
+    }
+
     return true;
+}
+
+SDL_Texture *LoadTexture(const string &filePath, SDL_Renderer *renderer)
+{
+    SDL_Texture *texture = IMG_LoadTexture(renderer, filePath.c_str());
+    if (texture == nullptr)
+    {
+        cout << "Failed to load texture. Error: " << IMG_GetError() << endl;
+    }
+    return texture;
 }
 
 // Graphic routine
 void ClearScreen(SDL_Renderer *renderer)
 {
-    SDL_SetRenderDrawColor(renderer, Colors::Black.r, Colors::Black.g, Colors::Black.b, Colors::Black.a);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // Black color
     SDL_RenderClear(renderer);
 }
 
-void DrawMainChar(int x, int y)
+void DrawMainChar(SDL_Renderer *renderer, Square &square)
 {
+    int width, height;
+    SDL_QueryTexture(square.image, NULL, NULL, &width, &height);
+
     SDL_Rect rect;
-    rect.x = x - (app.square.WIDTH / 2);
-    rect.y = y - (app.square.HEIGHT / 2);
-    rect.w = app.square.WIDTH;
-    rect.h = app.square.HEIGHT;
+    rect.x = square.x - (width / 2);
+    rect.y = square.y - (height / 2);
+    rect.w = width;
+    rect.h = height;
 
-    SDL_SetRenderDrawColor(app.renderer, Colors::Green.r, Colors::Green.g, Colors::Green.b, Colors::Green.a);
-
-    SDL_RenderFillRect(app.renderer, &rect);
+    SDL_RenderCopy(renderer, square.image, NULL, &rect);
 }
 
 // Application routine
-
-void ShutdownApllication()
+void ShutdownApplication()
 {
+    if (app.square.image != nullptr)
+    {
+        SDL_DestroyTexture(app.square.image);
+        app.square.image = nullptr;
+    }
+
     if (app.window != nullptr)
     {
         SDL_DestroyWindow(app.window);
@@ -112,19 +115,20 @@ void ShutdownApllication()
         app.renderer = nullptr;
     }
 
+    IMG_Quit();
     SDL_Quit();
 }
 
 bool InitApplication()
 {
-    if (InitSDL() == false)
+    if (!InitSDL())
     {
-        ShutdownApllication();
+        ShutdownApplication();
         return false;
     }
 
     app.window = SDL_CreateWindow(
-        "SDL Create Window (512x284)",
+        "SDL Image Example",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         app.screen.WIDTH,
@@ -133,12 +137,31 @@ bool InitApplication()
 
     if (app.window == nullptr)
     {
-        cout << "cannot create the window. Error: " << SDL_GetError() << endl;
-        SDL_Quit();
-        return EXIT_FAILURE;
+        cout << "Failed to create window. Error: " << SDL_GetError() << endl;
+        ShutdownApplication();
+        return false;
     }
 
-    app.renderer = SDL_CreateRenderer(app.window, -1, SDL_RENDERER_PRESENTVSYNC);
+    app.renderer = SDL_CreateRenderer(app.window, -1, SDL_RENDERER_ACCELERATED);
+    if (app.renderer == nullptr)
+    {
+        cout << "Failed to create renderer. Error: " << SDL_GetError() << endl;
+        ShutdownApplication();
+        return false;
+    }
+
+    // Load image
+    app.square.image = LoadTexture("/Users/penoelothibeaud/Desktop/projet/Software engineering/Hackaton/CONUHACK_Peno_Ammar_2024/res/image/base.png", app.renderer);
+    if (app.square.image == nullptr)
+    {
+        ShutdownApplication();
+        return false;
+    }
+
+    app.square.x = app.screen.center_X;
+    app.square.y = app.screen.center_Y;
+    app.square.state = IDLE;
+    app.square.step = app.DefaultStep;
 
     return true;
 }
@@ -147,17 +170,15 @@ void SetState(SquareState new_state)
 {
     app.square.state = new_state;
 }
+
 // main code
 int main(int argc, char *argv[])
 {
-
-    if (InitApplication() == false)
+    if (!InitApplication())
     {
-        ShutdownApllication();
         return EXIT_FAILURE;
     }
 
-    // Draw loop
     SDL_Event event;
     bool running = true;
 
@@ -165,85 +186,62 @@ int main(int argc, char *argv[])
     {
         ClearScreen(app.renderer);
 
-        // check character state
+        // Character state
         switch (app.square.state)
         {
         case MOVE_UP:
-        {
-            app.square.y = app.square.y - app.square.step;
+            app.square.y -= app.square.step;
             break;
-        }
         case MOVE_DOWN:
-        {
-            app.square.y = app.square.y + app.square.step;
+            app.square.y += app.square.step;
             break;
-        }
         case MOVE_LEFT:
-        {
-            app.square.x = app.square.x - app.square.step;
+            app.square.x -= app.square.step;
             break;
-        }
         case MOVE_RIGHT:
-        {
-            app.square.x = app.square.x + app.square.step;
+            app.square.x += app.square.step;
             break;
-        }
         default:
             break;
         }
 
-        // check and process I/O
-        if (SDL_PollEvent(&event))
+        // I/O processing
+        while (SDL_PollEvent(&event))
         {
             switch (event.type)
             {
             case SDL_KEYDOWN:
-            {
                 running = event.key.keysym.scancode != SDL_SCANCODE_ESCAPE;
                 if (event.key.keysym.scancode == SDL_SCANCODE_UP)
                 {
                     SetState(MOVE_UP);
                 }
-                if (event.key.keysym.scancode == SDL_SCANCODE_DOWN)
+                else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN)
                 {
                     SetState(MOVE_DOWN);
                 }
-                if (event.key.keysym.scancode == SDL_SCANCODE_LEFT)
+                else if (event.key.keysym.scancode == SDL_SCANCODE_LEFT)
                 {
                     SetState(MOVE_LEFT);
                 }
-                if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT)
+                else if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT)
                 {
                     SetState(MOVE_RIGHT);
                 }
-
                 break;
-            }
             case SDL_KEYUP:
-            {
                 SetState(IDLE);
                 break;
-            }
             case SDL_QUIT:
-            {
                 running = false;
                 break;
             }
-            default:
-            {
-                break;
-            }
-            }
         }
 
-        // Compute char position
-        DrawMainChar(app.square.x, app.square.y);
-
-        // Present result
+        DrawMainChar(app.renderer, app.square);
         SDL_RenderPresent(app.renderer);
     }
 
-    ShutdownApllication();
-
+    ShutdownApplication();
     return EXIT_SUCCESS;
 }
