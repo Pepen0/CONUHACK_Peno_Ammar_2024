@@ -1,4 +1,5 @@
 #include "Animation.h"
+#include <SDL2/SDL_image.h>
 
 Animation::Animation(SDL_Texture *texture, int frameCount, float frameDuration)
     : texture(texture), frameCount(frameCount), frameDuration(frameDuration),
@@ -17,10 +18,13 @@ void Animation::update(float deltaTime)
 void Animation::draw(SDL_Renderer *renderer, const SDL_Rect &destRect)
 {
     SDL_Rect srcRect;
-    srcRect.x = currentFrame * (texture->w / frameCount);
+    int textureWidth, textureHeight;
+    SDL_QueryTexture(texture, NULL, NULL, &textureWidth, &textureHeight);
+
+    srcRect.x = currentFrame * (textureWidth / frameCount);
     srcRect.y = 0;
-    srcRect.w = texture->w / frameCount;
-    srcRect.h = texture->h;
+    srcRect.w = textureWidth / frameCount;
+    srcRect.h = textureHeight;
 
     SDL_RenderCopy(renderer, texture, &srcRect, &destRect);
 }

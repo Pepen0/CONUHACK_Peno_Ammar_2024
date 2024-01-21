@@ -1,4 +1,5 @@
 #include "TextureManager.h"
+#include <iostream>
 
 // Loads images into SDL_Textures
 SDL_Texture *TextureManager::loadTexture(const std::string &fileName, SDL_Renderer *renderer)
