@@ -1,6 +1,7 @@
 #include <iostream>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <vector>
 using namespace std;
 #define SDL_MAIN_HANDLED
 
@@ -35,6 +36,15 @@ struct Square
     int step;
 };
 
+struct Bullet
+{
+    int x, y;
+    SDL_Texture *image;
+    int velocity;
+};
+
+std::vector<Bullet> bullets;
+
 // Application
 struct App
 {
@@ -44,6 +54,46 @@ struct App
     Graphics::Screen screen;
     Square square;
 } app;
+
+// Function to load texture
+SDL_Texture *LoadTexture(const string &filePath, SDL_Renderer *renderer)
+{
+    SDL_Texture *texture = IMG_LoadTexture(renderer, filePath.c_str());
+    if (texture == nullptr)
+    {
+        cout << "Failed to load texture. Error: " << IMG_GetError() << endl;
+    }
+    return texture;
+}
+
+// Function to create a bullet
+void ShootBullet()
+{
+    Bullet newBullet;
+    newBullet.x = app.square.x;
+    newBullet.y = app.square.y;
+    newBullet.velocity = 10; // example velocity
+    newBullet.image = LoadTexture("res/image/bullet.png", app.renderer);
+    bullets.push_back(newBullet);
+}
+// Remove bullet if it goes off screen
+void UpdateBullets()
+{
+    for (auto &bullet : bullets)
+    {
+        bullet.x += bullet.velocity;
+    }
+}
+
+// Function to draw bullets
+void DrawBullets(SDL_Renderer *renderer)
+{
+    for (const auto &bullet : bullets)
+    {
+        SDL_Rect bulletRect = {bullet.x, bullet.y, 10, 10}; // Adjust size as needed
+        SDL_RenderCopy(renderer, bullet.image, NULL, &bulletRect);
+    }
+}
 
 // SDL routine
 bool InitSDL()
@@ -61,16 +111,6 @@ bool InitSDL()
     }
 
     return true;
-}
-
-SDL_Texture *LoadTexture(const string &filePath, SDL_Renderer *renderer)
-{
-    SDL_Texture *texture = IMG_LoadTexture(renderer, filePath.c_str());
-    if (texture == nullptr)
-    {
-        cout << "Failed to load texture. Error: " << IMG_GetError() << endl;
-    }
-    return texture;
 }
 
 // Graphic routine
@@ -151,7 +191,7 @@ bool InitApplication()
     }
 
     // Load image
-    app.square.image = LoadTexture("/Users/penoelothibeaud/Desktop/projet/Software engineering/Hackaton/CONUHACK_Peno_Ammar_2024/res/image/base.png", app.renderer);
+    app.square.image = LoadTexture("res/image/base.png", app.renderer);
     if (app.square.image == nullptr)
     {
         ShutdownApplication();
@@ -205,6 +245,9 @@ int main(int argc, char *argv[])
             break;
         }
 
+        // Update bullets
+        UpdateBullets();
+
         // I/O processing
         while (SDL_PollEvent(&event))
         {
@@ -228,9 +271,21 @@ int main(int argc, char *argv[])
                 {
                     SetState(MOVE_RIGHT);
                 }
+
+                if (event.key.keysym.sym == SDLK_s)
+                {
+                    ShootBullet();
+                }
+
                 break;
             case SDL_KEYUP:
-                SetState(IDLE);
+                if (event.key.keysym.scancode == SDL_SCANCODE_UP ||
+                    event.key.keysym.scancode == SDL_SCANCODE_DOWN ||
+                    event.key.keysym.scancode == SDL_SCANCODE_LEFT ||
+                    event.key.keysym.scancode == SDL_SCANCODE_RIGHT)
+                {
+                    SetState(IDLE);
+                }
                 break;
             case SDL_QUIT:
                 running = false;
@@ -239,6 +294,7 @@ int main(int argc, char *argv[])
         }
 
         DrawMainChar(app.renderer, app.square);
+        DrawBullets(app.renderer); // Draw bullets
         SDL_RenderPresent(app.renderer);
     }
 
