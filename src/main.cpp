@@ -2,8 +2,11 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <vector>
+#include <SDL2/SDL_mixer.h>
 using namespace std;
 #define SDL_MAIN_HANDLED
+
+Mix_Chunk *roundStartSound = nullptr;
 
 // Graphics
 namespace Graphics
@@ -198,6 +201,12 @@ bool InitSDL()
         return false;
     }
 
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+    {
+        cout << "SDL_mixer could not initialize. SDL_mixer Error: " << Mix_GetError() << endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -243,6 +252,10 @@ void SpawnZombies()
 {
     for (int i = 0; i < app.numZombiesInWave; ++i)
     {
+        if (i == 1)
+        {
+            Mix_PlayChannel(-1, roundStartSound, 0);
+        }
         Zombie newZombie;
         // Ensure zombies spawn outside the visible screen area
         newZombie.x = rand() % (app.screen.WIDTH + 200) - 100;
@@ -290,7 +303,14 @@ void ShutdownApplication()
         SDL_DestroyRenderer(app.renderer);
         app.renderer = nullptr;
     }
+    if (roundStartSound != nullptr)
+    {
+        Mix_FreeChunk(roundStartSound);
+        roundStartSound = nullptr;
+    }
 
+    Mix_CloseAudio();
+    Mix_Quit();
     IMG_Quit();
     SDL_Quit();
 }
@@ -350,6 +370,13 @@ bool InitApplication()
     app.numZombiesInWave = 4; // Start with 2 zombies in the first wave
     app.waveStartTime = SDL_GetTicks();
 
+    roundStartSound = Mix_LoadWAV("res/audio/STM.MP3");
+    if (roundStartSound == nullptr)
+    {
+        cout << "Failed to load round start sound effect. SDL_mixer Error: " << Mix_GetError() << endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -367,14 +394,7 @@ int main(int argc, char *argv[])
     }
 
     // Initialize zombies
-    for (int i = 0; i < 5; ++i)
-    {
-        Zombie newZombie;
-        newZombie.x = rand() % app.screen.WIDTH;
-        newZombie.y = rand() % app.screen.HEIGHT;
-        newZombie.image = app.zombieTexture;
-        zombies.push_back(newZombie);
-    }
+    SpawnZombies();
 
     SDL_Event event;
     bool running = true;
