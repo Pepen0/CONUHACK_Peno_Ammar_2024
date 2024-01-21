@@ -4,3 +4,5 @@
 *.user
 *userprefs
 *.vscode
+*main.dSYM
+*main
