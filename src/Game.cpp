@@ -15,8 +15,8 @@ Game::~Game()
 bool Game::init()
 {
     app = new App();
-    if (!app->InitApplication())
-    {
+    if (!app->Init())
+    { // Changed to App::Init()
         std::cerr << "Game Initialization Failed" << std::endl;
         return false;
     }
@@ -46,9 +46,10 @@ void Game::render()
 {
     if (app)
     {
-        app->ClearScreen(app->renderer);
-        app->DrawMainChar(app->square.x, app->square.y);
-        SDL_RenderPresent(app->renderer);
+        app->ClearScreen();
+        // Draw main character or other objects here
+        // For example, use app->GetRenderer() if you need the renderer
+        SDL_RenderPresent(app->GetRenderer());
     }
 }
 
@@ -73,7 +74,7 @@ void Game::cleanup()
 {
     if (app)
     {
-        app->ShutdownApllication();
+        app->Shutdown(); // Changed to App::Shutdown()
         delete app;
         app = nullptr;
     }

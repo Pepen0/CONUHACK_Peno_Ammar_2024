@@ -3,8 +3,8 @@
 
 #include <SDL2/SDL.h>
 
-// Forward declaration of any classes used by Game
-struct App;
+// Forward declaration of App as a class
+class App;
 
 class Game
 {

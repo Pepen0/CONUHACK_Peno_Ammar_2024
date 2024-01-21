@@ -3,6 +3,12 @@
 
 #include "Entity.h"
 
+namespace Colors
+{
+    const SDL_Color Black = {0, 0, 0, SDL_ALPHA_OPAQUE};
+    const SDL_Color Green = {0, 255, 0, SDL_ALPHA_OPAQUE};
+}
+
 // Represents the player character
 class Character : public Entity
 {
