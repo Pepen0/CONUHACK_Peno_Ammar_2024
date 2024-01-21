@@ -40,10 +40,17 @@ struct Bullet
 {
     int x, y;
     SDL_Texture *image;
-    int velocity;
+    int velocityX, velocityY;
+};
+
+struct Zombie
+{
+    int x, y;
+    SDL_Texture *image;
 };
 
 std::vector<Bullet> bullets;
+std::vector<Zombie> zombies;
 
 // Application
 struct App
@@ -53,6 +60,7 @@ struct App
     SDL_Renderer *renderer;
     Graphics::Screen screen;
     Square square;
+    SDL_Texture *zombieTexture;
 } app;
 
 // Function to load texture
@@ -67,21 +75,24 @@ SDL_Texture *LoadTexture(const string &filePath, SDL_Renderer *renderer)
 }
 
 // Function to create a bullet
-void ShootBullet()
+void ShootBullet(int velocityX, int velocityY)
 {
     Bullet newBullet;
     newBullet.x = app.square.x;
     newBullet.y = app.square.y;
-    newBullet.velocity = 10; // example velocity
+    newBullet.velocityX = velocityX;
+    newBullet.velocityY = velocityY;
     newBullet.image = LoadTexture("res/image/bullet.png", app.renderer);
     bullets.push_back(newBullet);
 }
+
 // Remove bullet if it goes off screen
 void UpdateBullets()
 {
     for (auto &bullet : bullets)
     {
-        bullet.x += bullet.velocity;
+        bullet.x += bullet.velocityX;
+        bullet.y += bullet.velocityY;
     }
 }
 
@@ -92,6 +103,68 @@ void DrawBullets(SDL_Renderer *renderer)
     {
         SDL_Rect bulletRect = {bullet.x, bullet.y, 10, 10}; // Adjust size as needed
         SDL_RenderCopy(renderer, bullet.image, NULL, &bulletRect);
+    }
+}
+
+// Function to update zombies
+void UpdateZombies()
+{
+    static int frameCount = 0;
+    frameCount++;
+
+    if (frameCount % 2 == 0)
+    { // Move every 2 frames
+        for (auto &zombie : zombies)
+        {
+            if (zombie.x < app.square.x)
+                zombie.x++;
+            if (zombie.x > app.square.x)
+                zombie.x--;
+            if (zombie.y < app.square.y)
+                zombie.y++;
+            if (zombie.y > app.square.y)
+                zombie.y--;
+        }
+    }
+}
+
+// Function to check bullet-zombie collision
+void CheckBulletZombieCollision()
+{
+    for (auto it = bullets.begin(); it != bullets.end();)
+    {
+        bool bulletHit = false;
+        for (auto zit = zombies.begin(); zit != zombies.end();)
+        {
+            if (abs(it->x - zit->x) < 10 && abs(it->y - zit->y) < 10)
+            {
+                zit = zombies.erase(zit);
+                bulletHit = true;
+                break;
+            }
+            else
+            {
+                ++zit;
+            }
+        }
+        if (bulletHit)
+        {
+            it = bullets.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
+// Function to draw zombies
+void DrawZombies(SDL_Renderer *renderer)
+{
+    for (const auto &zombie : zombies)
+    {
+        SDL_Rect rect = {zombie.x - 30, zombie.y - 30, 60, 60}; // Adjust size as needed
+        SDL_RenderCopy(renderer, zombie.image, NULL, &rect);
     }
 }
 
@@ -143,6 +216,12 @@ void ShutdownApplication()
         app.square.image = nullptr;
     }
 
+    if (app.zombieTexture != nullptr)
+    {
+        SDL_DestroyTexture(app.zombieTexture);
+        app.zombieTexture = nullptr;
+    }
+
     if (app.window != nullptr)
     {
         SDL_DestroyWindow(app.window);
@@ -190,18 +269,30 @@ bool InitApplication()
         return false;
     }
 
-    // Load image
+    // Load images
     app.square.image = LoadTexture("res/image/base.png", app.renderer);
-    if (app.square.image == nullptr)
+    app.zombieTexture = LoadTexture("res/image/zombie.webp", app.renderer);
+    if (app.square.image == nullptr || app.zombieTexture == nullptr)
     {
         ShutdownApplication();
         return false;
     }
 
+    // Initialize square
     app.square.x = app.screen.center_X;
     app.square.y = app.screen.center_Y;
     app.square.state = IDLE;
     app.square.step = app.DefaultStep;
+
+    // Initialize zombies
+    for (int i = 0; i < 5; ++i)
+    {
+        Zombie newZombie;
+        newZombie.x = rand() % app.screen.WIDTH;
+        newZombie.y = rand() % app.screen.HEIGHT;
+        newZombie.image = app.zombieTexture;
+        zombies.push_back(newZombie);
+    }
 
     return true;
 }
@@ -217,6 +308,16 @@ int main(int argc, char *argv[])
     if (!InitApplication())
     {
         return EXIT_FAILURE;
+    }
+
+    // Initialize zombies
+    for (int i = 0; i < 5; ++i)
+    {
+        Zombie newZombie;
+        newZombie.x = rand() % app.screen.WIDTH;
+        newZombie.y = rand() % app.screen.HEIGHT;
+        newZombie.image = app.zombieTexture;
+        zombies.push_back(newZombie);
     }
 
     SDL_Event event;
@@ -245,8 +346,16 @@ int main(int argc, char *argv[])
             break;
         }
 
-        // Update bullets
+        // Update and draw bullets
         UpdateBullets();
+        DrawBullets(app.renderer);
+
+        // Update and draw zombies
+        UpdateZombies();
+        DrawZombies(app.renderer);
+
+        // Check collisions
+        CheckBulletZombieCollision();
 
         // I/O processing
         while (SDL_PollEvent(&event))
@@ -272,9 +381,22 @@ int main(int argc, char *argv[])
                     SetState(MOVE_RIGHT);
                 }
 
-                if (event.key.keysym.sym == SDLK_s)
+                // Shooting keys
+                if (event.key.keysym.sym == SDLK_a) // Left
                 {
-                    ShootBullet();
+                    ShootBullet(-10, 0);
+                }
+                else if (event.key.keysym.sym == SDLK_w) // Up
+                {
+                    ShootBullet(0, -10);
+                }
+                else if (event.key.keysym.sym == SDLK_d) // Right
+                {
+                    ShootBullet(10, 0);
+                }
+                else if (event.key.keysym.sym == SDLK_s) // Down
+                {
+                    ShootBullet(0, 10);
                 }
 
                 break;
@@ -294,7 +416,6 @@ int main(int argc, char *argv[])
         }
 
         DrawMainChar(app.renderer, app.square);
-        DrawBullets(app.renderer); // Draw bullets
         SDL_RenderPresent(app.renderer);
     }
 
