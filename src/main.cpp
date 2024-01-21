@@ -143,8 +143,9 @@ bool InitApplication()
     return true;
 }
 
-void Setstate()
+void SetState(SquareState new_state)
 {
+    app.square.state = new_state;
 }
 // main code
 int main(int argc, char *argv[])
@@ -179,7 +180,7 @@ int main(int argc, char *argv[])
         }
         case MOVE_LEFT:
         {
-            app.square.x = app.square.x + app.square.step;
+            app.square.x = app.square.x - app.square.step;
             break;
         }
         case MOVE_RIGHT:
@@ -199,6 +200,28 @@ int main(int argc, char *argv[])
             case SDL_KEYDOWN:
             {
                 running = event.key.keysym.scancode != SDL_SCANCODE_ESCAPE;
+                if (event.key.keysym.scancode == SDL_SCANCODE_UP)
+                {
+                    SetState(MOVE_UP);
+                }
+                if (event.key.keysym.scancode == SDL_SCANCODE_DOWN)
+                {
+                    SetState(MOVE_DOWN);
+                }
+                if (event.key.keysym.scancode == SDL_SCANCODE_LEFT)
+                {
+                    SetState(MOVE_LEFT);
+                }
+                if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT)
+                {
+                    SetState(MOVE_RIGHT);
+                }
+
+                break;
+            }
+            case SDL_KEYUP:
+            {
+                SetState(IDLE);
                 break;
             }
             case SDL_QUIT:
