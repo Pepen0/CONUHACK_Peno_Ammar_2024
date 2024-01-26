@@ -3,3 +3,5 @@
 *.suo
 *.user
 *userprefs
+*.vscode
+*build

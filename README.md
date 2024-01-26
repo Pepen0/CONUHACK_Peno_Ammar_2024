@@ -11,12 +11,22 @@ Welcome to our 2D Zombie Shooter game project, a thrilling game set in a Montrea
 
 ## Technologies Used
 - Programming Language: C++/Python
-- Graphics and Input: SDL (for C++) / Pygame (for Python)
+- Graphics and Input: SDL (for C++) 
 - Version Control: Git & GitHub
 
 ## Installation and Setup
-1. Clone the repository: `git clone "https://github.com/Pepen0/CONUHACK_Peno_Ammar_2024.git"`
-2. Install dependencies: `To be done Later`
+1. Clone the repository: `git clone https://github.com/Pepen0/CONUHACK_Peno_Ammar_2024.git`
+2. Install dependencies: 
+    ### Window
+    - Homebrew/g++ on windows - `to be added`
+    - 	Download the Development Libraries for your operating system.
+	-	Extract the SDL2 library to a known directory (e.g., C:\SDL2).
+	-	Add SDL2’s bin directory to your system’s PATH environment variable.
+    ### Mac
+    - Xcode on mac
+    - SDL ` brew install sdl2 `
+    
+
 3. Run the game: `To be done later`
 
 ## Contributing
