@@ -1,5 +1,5 @@
 #include <iostream>
-#include "Game.h" // Include the Game class header
+#include "HPPs/Game.h"
 
 int main(int argc, char *argv[])
 {
